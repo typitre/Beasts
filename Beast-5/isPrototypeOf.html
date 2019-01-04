@@ -1,0 +1,48 @@
+<script src="simpletest.js"></script>
+<script>
+
+function isPrototypeOf(prototype, challenge) {
+  if (prototype === challenge.__proto__) {
+    return true;
+  } else {
+    if (challenge.__proto__ !== undefined && challenge.__proto__.__proto__) {
+      return isPrototypeOf(prototype, challenge.__proto__);
+    } else {
+      return false;
+    }
+  }
+}
+
+// Code for tests:
+
+var canine = {
+  bark: function() {
+    console.log('bark');
+  }
+};
+
+var dog = Object.create(canine);
+dog.fetch = function() {
+  console.log('fetch');
+};
+
+var myDog = Object.create(dog);
+var empty = Object.create(null);
+
+
+tests({
+  'It should return true if the first argument is the prototype of the the second argument.': function() {
+    eq(isPrototypeOf(dog, myDog), true);
+  },
+  'It should return false if the first argument is not the prototype of the second argument.': function() {
+    eq(isPrototypeOf(dog, empty), false);
+  },
+  'It should be able to recursively check through all the prototypes.': function() {
+    eq(isPrototypeOf(Object.prototype, myDog), true);
+  },
+  'It should work on any number of prototype links.': function() {
+    eq(isPrototypeOf(canine, myDog), true);
+  },
+})
+
+</script>

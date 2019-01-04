@@ -1,0 +1,130 @@
+<script src="simpletest.js"></script>
+<script>
+
+function toFixed(number, precision) {
+  // Convert number to a string, save the decimal position for later use.
+  var numberString = number.toString();
+  var decimalIndex = numberString.indexOf('.');
+  var leadingZeros = 0;
+  var checkRounding = false;
+  var preDecimal
+  var postDecimal
+  var fixedNumber;
+  
+  // Check for a negative precision value and convert to positive.
+  if (precision < 0) {
+    var stringPrecision = precision.toString();
+    stringPrecision = stringPrecision.replace(/[-](.*)/, '$1');
+    precision = parseFloat(stringPrecision);
+  }
+
+  // Check for precision. If it doesn't exist, set it to zero.
+  if (!precision) {
+    precision = 0;
+  }
+
+  // Check if a whole number was passed in without a decimal.
+  // If so, set the decimalIndex to the end of the number.
+  if (decimalIndex === -1) {
+    decimalIndex = numberString.length;
+  }
+
+  // Use regex to remove the decimal point from the string.
+  numberString = numberString.replace(/(\d*)\.(\d*)/g, '$1$2')
+
+  preDecimal = numberString.slice(0, decimalIndex + precision);
+  postDecimal = numberString.slice(decimalIndex + precision);
+
+  numberString = preDecimal.concat('.', postDecimal);
+
+  // Check to see if number is 0.???
+  // If it is, flag it to check to see if it rounds up to 1.
+  if (number < 1 && number > 0) {
+    checkRounding = true;
+  }
+  
+  (function countLeadingZeroes(string) {
+    for (var i = 0; i < string.length; i++) {
+      if (string[i] === "0") {
+        leadingZeros++;
+      } else {
+        return
+      }
+    }
+  })(numberString);
+
+  // Convert the string back to a number and round accurately.
+  fixedNumber = parseFloat(numberString);
+  fixedNumber = Math.round(fixedNumber)
+
+  // Check rounding to see if number rounding up from 0.??? to 1. If it did, remove a leading zero.
+  if (checkRounding && fixedNumber === 1) {
+    leadingZeros--;
+  }
+
+  // Check to see if number rounded up from all 9s. (Example: 9.99 => 10.0)
+  if(RegExp(/^9*\.9/).test(numberString)) {
+    decimalIndex++;
+  }
+
+  // Convert number back to a string and add correct amount of leading zeroes.
+  numberString = fixedNumber.toString();
+  numberString = numberString.padStart(numberString.length + leadingZeros, '0');
+
+  // Split the string in preparation for re-adding the decimal point.
+  preDecimal = numberString.slice(0, decimalIndex);
+  postDecimal = numberString.slice(decimalIndex);
+
+  // Pad the end of postDecimal with 0s until it reaches the length of precision.
+  postDecimal = postDecimal.padEnd(precision, '0');
+
+  // Check to see if postDecimal is empty. If so, return a whole number without a decimal.
+  if (postDecimal === '') {
+    return numberString
+  }
+
+  // Combine strings and add a decimal point.
+  numberString = preDecimal.concat('.', postDecimal);
+  
+  // Return rounded number with decimal points in correct position.
+  return numberString;
+}
+
+
+tests({
+  'It should return a string.': function() {
+    eq(toFixed(1.23, 2), '1.23');
+  },
+  'It should accurately round to a number of decimal points based on the second number.': function() {
+    eq(toFixed(1.005, 2), '1.01');
+  },
+  'It should add zeros as needed to return a number with the correct amount of digits.': function() {
+    eq(toFixed(10.245, 4), '10.2450');
+  },
+  'It should be able to round numbers < 1 accurately.': function() {
+    eq(toFixed(0.615, 2), '0.62');
+  },
+  'It should be able to handle whole numbers.': function() {
+    eq(toFixed(19, 0), '19');
+  },
+  'It should be able to add decimal points to whole numbers.': function() {
+    eq(toFixed(25, 2), '25.00');
+  },
+  'It should remove negatives from the second argument.': function() {
+    eq(toFixed(1.245, -2), '1.25');
+  },
+  'If precision is undefined, it should set precision to 0.': function() {
+    eq(toFixed(1.5), '2');
+  },
+  'It should round negative numbers closer to zero, as per accountingJS.': function() {
+    eq(toFixed(-1.25, 1), '-1.2');
+  },
+  'It should round 0.005 to 2 decimal points and equal 0.01.': function() {
+    eq(toFixed(0.005, 2), '0.01')
+  },
+  'It should round correctly when dealing with only 9s as the digit. (ex: 99.99 => 100.0)': function() {
+    eq(toFixed(9.99, 1), '10.0')
+  }
+})
+
+</script>

@@ -1,0 +1,139 @@
+<script src="simpletest.js"></script>
+<script>
+
+(function() {
+
+var libraryStorage = {};
+
+function librarySystem(libraryName, dependencyArray, callback) {
+  if (arguments.length > 1) {
+    // Creating a library. Each library is an object containing the callback function and dependency array.
+    libraryStorage[libraryName] = {callback: callback, dependencies: dependencyArray}
+
+  } else {
+    // Create dependencies variable for easier access to it.
+    var dependencies = libraryStorage[libraryName].dependencies
+    
+    // Use map to return the callback functions of all the dependencies required by the library.
+    var returnedDependencies = dependencies.map(function(value, index) {
+      var dependencyName = dependencies[index];
+
+      // Check to see if dependency callback has already been run. If it has, return that instead of running again.
+      if (libraryStorage[dependencyName].executedCallback === undefined) {
+        return librarySystem(dependencyName)
+      } else {
+        return libraryStorage[dependencyName].executedCallback;
+      }
+      
+    })
+    
+    // Return the library, passing in the dependencies as parameters. 
+
+    // Check is library function has already been ran. If it has, return that instead of running again.
+    if (libraryStorage[libraryName].executedCallback === undefined) {
+      var executedCallback =  libraryStorage[libraryName].callback.apply(null, returnedDependencies);
+
+      // Add the executed function to the libraryStorage object and then return it.
+      libraryStorage[libraryName].executedCallback = executedCallback;
+      return executedCallback
+
+    } else {
+      return libraryStorage[libraryName].executedCallback
+    }
+    
+  }
+}
+
+window.librarySystem = librarySystem;
+
+})();
+
+
+tests({
+  'It should load libraries with no dependencies.': function() {
+    librarySystem('dependency', [], function() {
+      return 'loaded dependency';
+    });
+
+    var noDependenciesTest = librarySystem('dependency');
+    eq(noDependenciesTest, 'loaded dependency');
+  },
+  'It should load libraries with dependencies.': function() {
+    librarySystem('app', ['dependency'], function(dependency) {
+      return 'app with ' + dependency;
+    });
+
+    var singleDependencyTest = librarySystem('app')
+    eq(singleDependencyTest, 'app with loaded dependency');
+  },
+  'It should be able to load libraries with dependencies out of order.': function() {
+    librarySystem('workBlurb', ['name', 'company'], function(name, company) {
+      return name + ' works at ' + company;
+    });
+
+    librarySystem('name', [], function() {
+      return 'Gordon';
+    });
+
+    librarySystem('company', [], function() {
+      return 'Watch and Code';
+    });
+    
+    var outOfOrderLibraryTest = librarySystem('workBlurb');
+    eq(outOfOrderLibraryTest, 'Gordon works at Watch and Code');
+  },
+  'It should run the callback function for each library only once.': function() {
+    var numberOfTimesCallbackHasRun = 0;
+
+    librarySystem('callbackChecker', [], function() {
+      numberOfTimesCallbackHasRun++
+      return numberOfTimesCallbackHasRun; 
+    });
+
+    librarySystem('callbackChecker');
+    librarySystem('callbackChecker');
+    librarySystem('callbackChecker');
+
+    eq(numberOfTimesCallbackHasRun, 1)
+  },
+  'It should run the callback function for dependencies only once.': function() {
+    var numberOfTimesCallbackHasRun = 0;
+
+    librarySystem('callbackChecker2', [], function() {
+      numberOfTimesCallbackHasRun++
+      return numberOfTimesCallbackHasRun; 
+    });
+
+    librarySystem('dependencyExecuter', ['callbackChecker2'], function() {
+      return numberOfTimesCallbackHasRun; 
+    });
+
+    librarySystem('dependencyExecuter');
+    librarySystem('dependencyExecuter');
+    librarySystem('dependencyExecuter');
+
+    eq(numberOfTimesCallbackHasRun, 1)
+  },
+  'It should be able to run libraries with nested dependencies.': function() {
+    librarySystem('sentenceBuilder', ['partOneAndTwo', 'partThree'], function(partOneAndTwo, partThree) {
+      return partOneAndTwo + partThree;
+    });
+
+    librarySystem('partOneAndTwo', ['partTwo'], function(partTwo) {
+      return 'This is part one' + ' ' + partTwo;
+    });
+
+    librarySystem('partTwo', [], function() {
+      return 'and this is part two. ';
+    });
+
+    librarySystem('partThree', [], function() {
+      return 'Lastly, this is part three.';
+    });
+
+    var sentence = librarySystem('sentenceBuilder');
+    eq(sentence, 'This is part one and this is part two. Lastly, this is part three.')
+  }
+})
+
+</script>
